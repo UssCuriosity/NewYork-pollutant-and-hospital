@@ -1,0 +1,225 @@
+# ============================================================
+# NYC Pollution & Health Study — Central Configuration
+# 2022–2024 | PM2.5 / NO2 / SO2 × Inpatient / ED / Outpatient
+# ============================================================
+
+# ── 研究时间范围 ────────────────────────────────────────────
+study:
+  start_year: 2022
+  end_year:   2024
+  years: [2022, 2023, 2024]
+
+# ── EPA AQS API 凭据 ────────────────────────────────────────
+# 免费注册：https://aqs.epa.gov/data/api/signup?email=YOUR_EMAIL
+# 留空时脚本自动进入"本地 CSV 回退"模式
+epa_aqs:
+  email: ""        # 填入注册邮箱，例如：user@example.com
+  key:   ""        # 填入 API key
+  base_url: "https://aqs.epa.gov/data/api"
+  endpoint_daily: "dailyData/byCounty"
+  # 请求间隔秒数（防止触发速率限制）
+  request_delay: 2.0
+
+  # 参数代码
+  parameters:
+    pm25: "88101"
+    no2:  "42602"
+    so2:  "42401"
+
+  # NYC 五县 FIPS（州代码36 + 县代码）
+  # Bronx=005, Kings(Brooklyn)=047, New York(Manhattan)=061,
+  # Queens=081, Richmond(Staten Island)=085
+  state_fips: "36"
+  county_fips:
+    bronx:        "005"
+    kings:        "047"
+    new_york:     "061"
+    queens:       "081"
+    richmond:     "085"
+
+# ── Socrata / Health Data NY API ────────────────────────────
+# App Token 可选（提速）：https://data.ny.gov/profile/app_tokens
+# 留空时以匿名身份访问（限速更严）
+socrata:
+  domain: "health.data.ny.gov"
+  app_token: ""   # 填入 Socrata App Token
+
+  # SPARCS 公开数据集 ID（按类型×年份）
+  # 数据集页面：https://health.data.ny.gov/browse?tags=sparcs
+  # 下方 ID 为截至 2024 年的已知公开 PUF 数据集；如版本更新请替换
+  dataset_ids:
+    inpatient:
+      2022: "vn5v-hh5r"   # SPARCS Inpatient De-identified 2022
+      2023: "5dtw-tffi"   # SPARCS Inpatient De-identified 2023
+      2024: ""            # 2024 数据集上线后填入（如暂无则用本地 CSV）
+    ed:
+      2022: "myei-c3fa"   # SPARCS ED De-identified 2022
+      2023: "q45d-7d9b"   # SPARCS ED De-identified 2023
+      2024: ""
+    outpatient:
+      2022: "rcet-fyvj"   # SPARCS Outpatient De-identified 2022
+      2023: "4ny4-j5zv"   # SPARCS Outpatient De-identified 2023
+      2024: ""
+
+  # Socrata SoQL 分页大小
+  page_size: 50000
+  # 请求最大重试次数
+  max_retries: 3
+
+  # SPARCS 各表的 NYC 机构县名称（用于 SoQL WHERE 过滤）
+  nyc_facility_counties:
+    - "Bronx"
+    - "Kings"
+    - "New York"
+    - "Queens"
+    - "Richmond"
+
+  # SPARCS 字段名映射（不同年份字段名可能略有差异）
+  # 键为本项目统一名称，值为 Socrata 数据集中的原始列名
+  field_map:
+    inpatient:
+      discharge_date:    "discharge_date_yyyy"   # 或 "discharge_date"
+      discharge_year:    "discharge_year"
+      discharge_month:   "discharge_month"        # 部分 PUF 无此字段
+      facility_county:   "hospital_county"
+      age_group:         "age_group"
+      icd10_primary:     "apr_drg_code"           # 或 "ccs_diagnosis_code"
+      # 注：PUF 中主诊断字段名因版本而异，见 DATA_DICTIONARY.md
+      diagnosis_code:    "icd_diagnosis_code_1"
+    ed:
+      discharge_date:    "visit_date"
+      discharge_year:    "visit_year"
+      discharge_month:   "visit_month"
+      facility_county:   "facility_county"
+      age_group:         "age_group"
+      diagnosis_code:    "icd_diagnosis_code_1"
+    outpatient:
+      discharge_date:    "visit_date"
+      discharge_year:    "visit_year"
+      discharge_month:   "visit_month"
+      facility_county:   "facility_county"
+      age_group:         "age_group"
+      diagnosis_code:    "icd_diagnosis_code_1"
+
+# ── ICD-10 疾病筛选 ─────────────────────────────────────────
+# 前缀匹配：以下任一前缀开头的主诊断代码将被纳入分析
+# 参考：NCHS ICD-10-CM 2024；NYC DOHMH 环境流行病学研究常用终点
+icd10_prefixes:
+  respiratory:
+    - "J00"   # 急性上呼吸道感染
+    - "J01"   # 急性鼻窦炎
+    - "J02"   # 急性咽炎
+    - "J04"   # 急性喉气管炎
+    - "J05"   # 急性梗阻性喉炎
+    - "J06"   # 急性上呼吸道感染 NOS
+    - "J09"   # 流感
+    - "J10"   # 流感
+    - "J11"   # 流感
+    - "J12"   # 病毒性肺炎
+    - "J13"   # 肺炎链球菌肺炎
+    - "J14"   # 流感嗜血杆菌肺炎
+    - "J15"   # 细菌性肺炎
+    - "J18"   # 肺炎 NOS
+    - "J20"   # 急性支气管炎
+    - "J21"   # 急性细支气管炎
+    - "J22"   # 急性下呼吸道感染
+    - "J40"   # 支气管炎
+    - "J41"   # 慢性单纯性/黏液脓性支气管炎
+    - "J42"   # 未指明慢性支气管炎
+    - "J43"   # 肺气肿
+    - "J44"   # 慢性阻塞性肺疾病（COPD）
+    - "J45"   # 哮喘
+    - "J46"   # 哮喘持续状态
+    - "J47"   # 支气管扩张
+    - "J60"   # 煤工尘肺
+    - "J68"   # 吸入化学/烟雾所致呼吸系疾病
+    - "J69"   # 吸入固/液物质所致肺炎
+    - "J70"   # 其他外因性肺疾病
+    - "J80"   # 急性呼吸窘迫综合征（ARDS）
+    - "J81"   # 肺水肿
+    - "J82"   # 嗜酸粒细胞性肺炎
+    - "J84"   # 间质性肺疾病
+    - "J90"   # 胸腔积液
+    - "J96"   # 呼吸衰竭
+    - "J98"   # 其他呼吸系疾病
+  cardiovascular:
+    - "I10"   # 原发性高血压
+    - "I11"   # 高血压心脏病
+    - "I20"   # 心绞痛
+    - "I21"   # 急性心肌梗死（STEMI/NSTEMI）
+    - "I22"   # 后续心肌梗死
+    - "I24"   # 其他急性缺血性心脏病
+    - "I25"   # 慢性缺血性心脏病
+    - "I26"   # 肺栓塞
+    - "I30"   # 心包炎
+    - "I33"   # 急性心内膜炎
+    - "I42"   # 心肌病
+    - "I44"   # 房室及左束支传导阻滞
+    - "I46"   # 心脏骤停
+    - "I47"   # 阵发性心动过速
+    - "I48"   # 心房颤动和扑动
+    - "I49"   # 其他心律失常
+    - "I50"   # 心力衰竭（充血性心衰）
+    - "I51"   # 心脏病并发症
+    - "I60"   # 蛛网膜下腔出血
+    - "I61"   # 脑内出血
+    - "I62"   # 其他颅内出血
+    - "I63"   # 脑梗死（缺血性卒中）
+    - "I64"   # 卒中 NOS
+    - "I65"   # 颅外动脉闭塞
+    - "I70"   # 动脉粥样硬化
+    - "I73"   # 外周动脉疾病
+    - "I74"   # 动脉栓塞和血栓形成
+
+# ── 年龄分组标准化 ───────────────────────────────────────────
+# SPARCS PUF 原始年龄组字段 → 本项目统一分组
+# 格式：raw_value: standard_group
+age_group_map:
+  # 常见 SPARCS 原始值
+  "0 to 17":          "0-17"
+  "18 to 29":         "18-44"
+  "30 to 44":         "18-44"
+  "45 to 59":         "45-64"
+  "60 to 74":         "45-64"
+  "75 or Older":      "75+"
+  # 备选格式
+  "0-17":             "0-17"
+  "18-29":            "18-44"
+  "30-44":            "18-44"
+  "45-59":            "45-64"
+  "60-74":            "65-74"
+  "75+":              "75+"
+  "Under 1":          "0-17"
+  "1 to 4":           "0-17"
+  "5 to 14":          "0-17"
+  "15 to 17":         "0-17"
+  "18 to 24":         "18-44"
+  "25 to 34":         "18-44"
+  "35 to 44":         "18-44"
+  "45 to 54":         "45-64"
+  "55 to 64":         "45-64"
+  "65 to 74":         "65-74"
+  "75 to 84":         "75+"
+  "85 and over":      "75+"
+  "85 or Older":      "75+"
+
+# 最终输出年龄组（有序）
+age_groups_ordered:
+  - "0-17"
+  - "18-44"
+  - "45-64"
+  - "65-74"
+  - "75+"
+
+# ── 美国联邦法定节假日（用于 is_holiday 字段）────────────────
+# clean_merge.py 使用 dateutil 计算，此处仅作说明
+holidays:
+  use_us_federal: true
+  extra_days: []  # 可手动追加如 "2022-12-26"
+
+# ── 输出路径 ────────────────────────────────────────────────
+paths:
+  raw_data:       "data/raw"
+  processed_data: "data/processed"
+  outputs:        "outputs"
+  log_file:       "outputs/pipeline.log"

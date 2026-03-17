@@ -1,0 +1,21 @@
+# ============================================================
+# NYC Pollution & Health Study — Python Dependencies
+# ============================================================
+
+# Core data science
+pandas>=2.2
+numpy>=1.26
+pyyaml>=6.0
+python-dateutil>=2.9
+
+# HTTP / REST API
+requests>=2.32
+
+# Socrata (Health Data NY API)
+sodapy>=2.2
+
+# US geography utilities (county-level population weighting, optional)
+us>=2.0
+
+# US holidays (is_holiday flag in merged output)
+holidays>=0.46
